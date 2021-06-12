@@ -1,21 +1,25 @@
-# Tcp
+# ex-tcp
 
-**TODO: Add description**
+Demonstrating messaging in elixir using OTP + erlang's :gen_tcp.
 
-## Installation
+This project is not built for production and is more of a demonstration for OTP + lower-level messaging.
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `tcp` to your list of dependencies in `mix.exs`:
+`:gen_tcp` is the Erlang provided module that allows us to communicate over tcp.
 
-```elixir
-def deps do
-  [
-    {:tcp, "~> 0.1.0"}
-  ]
-end
-```
+## Modules
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at [https://hexdocs.pm/tcp](https://hexdocs.pm/tcp).
+### Connection Proxy
 
+Opens a TCP connection on our port (8080). Whenever a new user joins, it passes the TCP connection to our manager.
+
+The proxy also handles calling `:gen_tcp.controlling_process` which passes incoming tcp packets to the respective connection_server process.
+
+### Connection Manager
+
+Receives a new TCP connection process & spins up a `DynamicSupervisor` for each new connection.
+
+Also handles keeping connected clients in state & broadcasts messages to child processes.
+
+### Connection Server
+
+Handles incoming / outgoing messages for connected users. A `connection_server` is spun up for every connected user.
