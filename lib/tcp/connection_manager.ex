@@ -18,20 +18,26 @@ defmodule Tcp.ConnectionManager do
     GenServer.call(__MODULE__, {:register, socket})
   end
 
-  defp notify_users(pid, action, updated_user, all_users) do
+  defp notify_user_update(pid, action, updated_user, all_users) do
     GenServer.cast(pid, {action, updated_user, all_users})
   end
 
   defp broadcast_join(users, user) do
     users
     |> Map.values()
-    |> Enum.each(&notify_users(&1, :new_user_joined, user, users))
+    |> Enum.each(&notify_user_update(&1, :new_user_joined, user, users))
   end
 
   defp broadcast_leave(users, user) do
     users
     |> Map.values()
-    |> Enum.each(&notify_users(&1, :user_left, user, users))
+    |> Enum.each(&notify_user_update(&1, :user_left, user, users))
+  end
+
+  defp broadcast_message(users, from_user, message) do
+    users
+    |> Map.values()
+    |> Enum.each(&GenServer.cast(&1, {:new_message, from_user, message}))
   end
 
   def handle_cast({:user_left, child_pid, name}, %{clients: clients, users: users} = state) do
@@ -57,6 +63,14 @@ defmodule Tcp.ConnectionManager do
     broadcast_join(users, name)
 
     {:noreply, %{state | users: new_users}}
+  end
+
+  def handle_cast({:new_message, msg, from_user}, %{clients: _, users: users} = state) do
+    users
+    |> Map.delete(from_user)
+    |> broadcast_message(from_user, msg)
+
+    {:noreply, state}
   end
 
   def handle_call({:register, socket}, _, %{clients: clients, users: _users} = state) do

@@ -60,6 +60,15 @@ defmodule Tcp.ConnectionServer do
     {:noreply, state}
   end
 
+  def handle_cast(
+        {:new_message, from_user, message},
+        %{pid: pid, parent: _parent, initialized: _init, name: _} = state
+      ) do
+    :gen_tcp.send(pid, ts() <> "#{from_user} - #{message}")
+
+    {:noreply, state}
+  end
+
   def handle_cast({:send, packet}, %{pid: pid, parent: _parent, initialized: _init} = state) do
     :gen_tcp.send(pid, packet)
 
@@ -70,8 +79,10 @@ defmodule Tcp.ConnectionServer do
     GenServer.cast(self(), {:send, packet})
   end
 
-  def handle_info({:tcp, _socket, _msg}, %{initialized: true, parent: _, pid: _, name: _} = state) do
+  def handle_info({:tcp, _socket, msg}, %{initialized: true, parent: parent_pid, pid: _, name: name} = state) do
     # handle message once user is initialized
+    GenServer.cast(parent_pid, {:new_message, msg, name})
+
     {:noreply, state}
   end
 
@@ -94,5 +105,9 @@ defmodule Tcp.ConnectionServer do
   def handle_info({:tcp_closed, _pid}, %{initialized: false, parent: _, pid: _, name: _} = state) do
     # Do nothing if user disconnects before supply a username. No one cares about the anonymous man.
     {:noreply, state}
+  end
+
+  defp ts() do
+    "[#{Time.truncate(Time.utc_now(), :second)}] "
   end
 end
