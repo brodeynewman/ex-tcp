@@ -103,7 +103,7 @@ defmodule Tcp.ConnectionServer do
   end
 
   def handle_info({:tcp_closed, _pid}, %{initialized: false, parent: _, pid: _, name: _} = state) do
-    # Do nothing if user disconnects before supply a username. No one cares about the anonymous man.
+    # Do nothing if user disconnects before supplying a username. No one cares about the anonymous man.
     {:noreply, state}
   end
 

@@ -77,6 +77,7 @@ defmodule Tcp.ConnectionManager do
     case Map.get(clients, socket) do
       nil ->
         {:ok, pid} =
+          # If no user exists, spin up a new connection server
           DynamicSupervisor.start_child(
             Tcp.DynamicSupervisor,
             {Tcp.ConnectionServer, {socket, self()}}
