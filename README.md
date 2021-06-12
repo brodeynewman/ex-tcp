@@ -23,3 +23,17 @@ Also handles keeping connected clients in state & broadcasts messages to child p
 ### Connection Server
 
 Handles incoming / outgoing messages for connected users. A `connection_server` is spun up for every connected user.
+
+## Usage
+
+Running the server:
+
+```
+make run
+```
+
+Connecting:
+
+```
+make connect
+```
