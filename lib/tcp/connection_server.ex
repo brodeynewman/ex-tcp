@@ -34,10 +34,28 @@ defmodule Tcp.ConnectionServer do
         @nl
 
   def handle_cast(
-        {:user_joined, users},
+        {:user_joined, all_users},
         %{pid: pid, parent: _parent, initialized: _init, name: name} = state
       ) do
-    :gen_tcp.send(pid, get_welcome_message(users, name))
+    :gen_tcp.send(pid, get_welcome_message(all_users, name))
+
+    {:noreply, state}
+  end
+
+  def handle_cast(
+        {:user_left, left_user, _all_users},
+        %{pid: pid, parent: _parent, initialized: _init, name: _name} = state
+      ) do
+        :gen_tcp.send(pid, "#{left_user} has left the chat." <> @nl)
+
+    {:noreply, state}
+  end
+
+  def handle_cast(
+        {:new_user_joined, new_user, _all_users},
+        %{pid: pid, parent: _parent, initialized: _init, name: _} = state
+      ) do
+    :gen_tcp.send(pid, "#{new_user} has joined the chat." <> @nl)
 
     {:noreply, state}
   end
@@ -52,7 +70,8 @@ defmodule Tcp.ConnectionServer do
     GenServer.cast(self(), {:send, packet})
   end
 
-  def handle_info({:tcp, socket, msg}, %{initialized: true, parent: _, pid: _, name: _} = state) do
+  def handle_info({:tcp, _socket, _msg}, %{initialized: true, parent: _, pid: _, name: _} = state) do
+    # handle message once user is initialized
     {:noreply, state}
   end
 
@@ -60,10 +79,20 @@ defmodule Tcp.ConnectionServer do
         {:tcp, _, name},
         %{initialized: false, parent: parent, pid: _, name: nil} = state
       ) do
-    # first message is always the name of the user, so we can flip our initialized flag
-
     GenServer.cast(parent, {:user_joined, name, self()})
 
+    # first message is always the name of the user, so we can flip our initialized flag
     {:noreply, %{state | initialized: true, name: name}}
+  end
+
+  def handle_info({:tcp_closed, pid}, %{initialized: true, parent: parent_id, pid: _, name: name} = state) do
+    GenServer.cast(parent_id, {:user_left, pid, name})
+
+    {:noreply, state}
+  end
+
+  def handle_info({:tcp_closed, _pid}, %{initialized: false, parent: _, pid: _, name: _} = state) do
+    # Do nothing if user disconnects before supply a username. No one cares about the anonymous man.
+    {:noreply, state}
   end
 end

@@ -18,6 +18,33 @@ defmodule Tcp.ConnectionManager do
     GenServer.call(__MODULE__, {:register, socket})
   end
 
+  defp notify_users(pid, action, updated_user, all_users) do
+    GenServer.cast(pid, {action, updated_user, all_users})
+  end
+
+  defp broadcast_join(users, user) do
+    users
+    |> Map.values()
+    |> Enum.each(&notify_users(&1, :new_user_joined, user, users))
+  end
+
+  defp broadcast_leave(users, user) do
+    users
+    |> Map.values()
+    |> Enum.each(&notify_users(&1, :user_left, user, users))
+  end
+
+  def handle_cast({:user_left, child_pid, name}, %{clients: clients, users: users} = state) do
+    Logger.debug("Username has left: #{name} for child process: #{inspect(child_pid)}")
+
+    updated_users = Map.delete(users, name)
+
+    # tell all child processes that a new user has joined
+    broadcast_leave(updated_users, name)
+
+    {:noreply, %{state | users: updated_users, clients: Map.delete(clients, child_pid)}}
+  end
+
   def handle_cast({:user_joined, name, child_pid}, %{clients: _, users: users} = state) do
     Logger.debug("Username collected: #{name} for child process: #{inspect(child_pid)}")
 
@@ -25,6 +52,9 @@ defmodule Tcp.ConnectionManager do
 
     # hand our child process all of the user names WITHOUT our new user
     GenServer.cast(child_pid, {:user_joined, Map.keys(users)})
+
+    # tell all child processes that a new user has joined
+    broadcast_join(users, name)
 
     {:noreply, %{state | users: new_users}}
   end
