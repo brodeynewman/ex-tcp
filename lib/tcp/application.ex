@@ -4,7 +4,7 @@ defmodule Tcp.Application do
   def start(_type, _args) do
     children = [
       {Tcp.ConnectionProxy, 8080},
-      {Tcp.ConnectionCache, name: Tcp.ConnectionCache},
+      {Tcp.ConnectionManager, name: Tcp.ConnectionManager},
       {DynamicSupervisor, strategy: :one_for_one, name: Tcp.DynamicSupervisor}
     ]
 
